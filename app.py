@@ -7,6 +7,7 @@ import json
 import time
 import asyncio
 import random
+from urllib.parse import urlparse
 
 from flask import Flask, Response, request, abort, redirect, jsonify, render_template, send_from_directory
 
@@ -53,9 +54,11 @@ def grab_src(filt=None):
 
 @app.route('/')
 def index():
+    cache_bust = str(urlparse(request.url).query or '').split('&ts=')[0] + '&ts=' + str(int(time.time()))
     return render_template('index.html',
-                           seconds=request.params.get('seconds', os.getenv('SECONDS', 300)),
-                           src=grab_src(request.params.get('filter', None)))
+                           cache_bust=cache_bust,
+                           seconds=request.args.get('seconds', os.getenv('SECONDS', 300)),
+                           src=grab_src(request.args.get('filter', None)))
 
 @app.route('/videos/<path:path>')
 def render_static(path):
