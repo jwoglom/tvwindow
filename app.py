@@ -6,8 +6,9 @@ import logging
 import json
 import time
 import asyncio
+import random
 
-from flask import Flask, Response, request, abort, redirect, jsonify
+from flask import Flask, Response, request, abort, redirect, jsonify, render_template, send_from_directory
 
 is_gunicorn = "gunicorn" in os.environ.get("SERVER_SOFTWARE", "")
 if is_gunicorn:
@@ -28,11 +29,39 @@ app = Flask(__name__)
 
 metrics = PrometheusMetrics(app)
 
+
+FOLDER = os.getenv('FOLDER', '/videos/')
+
+def _is_video(p):
+    if not os.path.isfile(p):
+        return False
+
+    EXTS = ['.mp4', '.webm']
+
+    return any([p.lower().endswith(ext) for ext in EXTS])
+
+def grab_src():
+    files = [f for f in os.listdir(FOLDER) if _is_video(os.path.join(FOLDER, f))]
+    if not files:
+        return None
+
+    return os.path.join('/videos/', random.choice(files))
+
+
 @app.route('/')
 def index():
-    return jsonify(
-        {}
-    )
+    return render_template('index.html',
+                           seconds=os.getenv('SECONDS', 300),
+                           src=grab_src())
+
+@app.route('/videos/<path:path>')
+def render_static(path):
+    return send_from_directory(FOLDER, path, conditional=True)
+
+@app.route('/folder')
+def folder_route():
+    return jsonify([f for f in os.listdir(FOLDER) if _is_video(os.path.join(FOLDER, f))])
+
 
 @app.route('/healthz')
 def healthz_route():
