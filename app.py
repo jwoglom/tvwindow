@@ -40,8 +40,11 @@ def _is_video(p):
 
     return any([p.lower().endswith(ext) for ext in EXTS])
 
-def grab_src():
+def grab_src(filt=None):
     files = [f for f in os.listdir(FOLDER) if _is_video(os.path.join(FOLDER, f))]
+    if filt:
+        files = [f for f in files if filt in f]
+
     if not files:
         return None
 
@@ -51,8 +54,8 @@ def grab_src():
 @app.route('/')
 def index():
     return render_template('index.html',
-                           seconds=os.getenv('SECONDS', 300),
-                           src=grab_src())
+                           seconds=request.params.get('seconds', os.getenv('SECONDS', 300)),
+                           src=grab_src(request.params.get('filter', None)))
 
 @app.route('/videos/<path:path>')
 def render_static(path):
